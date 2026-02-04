@@ -15,8 +15,8 @@ function authenticateToken(req, res, next) {
         if (err) return res.sendStatus(403);
         req.user = user;
         next();
-    }
-);}
+    });
+}
 
 app.post('/tasks', authenticateToken, (req, res) => {
     const { title, description } = req.body;
@@ -37,7 +37,14 @@ app.delete('/tasks/:id', authenticateToken, (req, res) => {
     tasks.splice(taskIndex, 1);
     res.status(204).send();
 });
-app.listen(3002, () => {
-    console.log('Tasks service running on port 4001');
+    
+// Health endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', service: 'tasks-service', uptime: process.uptime() });
+});
+
+const PORT = process.env.PORT || 3002;
+app.listen(PORT, () => {
+    console.log(`Tasks service running on port ${PORT}`);
 });
 module.exports = app;

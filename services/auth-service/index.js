@@ -5,7 +5,7 @@ const app = express();
 
 app.use(express.json());
 const users = [];
-const SECRET_KEY = process.env.JWT_SECRET
+const SECRET_KEY = process.env.JWT_SECRET;
 
 app.post('/register', async(req,res)=>{
     const {username, password} = req.body;
@@ -23,7 +23,14 @@ app.post('/login', async(req,res)=>{
         res.status(401).send('Invalid credentials');
     }
 });
-app.listen(3001, () => {
-    console.log('Auth service running on port 3001');
+
+// Health endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', service: 'auth-service', uptime: process.uptime() });
 });
-module.exports = app;
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+    console.log(`Auth service running on port ${PORT}`);
+});
+module.exports = app; 
