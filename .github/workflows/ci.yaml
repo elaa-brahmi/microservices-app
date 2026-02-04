@@ -112,3 +112,55 @@ jobs:
         run: |
           docker push ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}
           docker push ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:latest
+  update-gitops:
+    needs: [detect-changes, build-and-push]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+    steps:
+      - name: Checkout GitOps Repository
+        uses: actions/checkout@v4
+        with:
+          repository: elaa-brahmi/microservice-gitops
+          token: ${{ secrets.GITOPS_PAT }} 
+          path: gitops-repo
+
+      - name: Update Kubernetes Manifests
+        run: |
+          cd gitops-repo/apps/${{ matrix.service }}
+          
+          # Replace the image tag in deployment.yaml
+          # It looks for the pattern image: ACR_URL/service_name:ANYTHING and replaces it with the new SHA
+          sed -i "s|image: ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:.*|image: ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}|g" deployment.yaml
+
+      - name: Commit and Push Changes
+        run: |
+          cd gitops-repo
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "chore: update ${{ matrix.service }} image to ${{ github.sha }}"
+          git push origin main 
+  notify-email:
+    needs: update-gitops
+    runs-on: ubuntu-latest
+    if: always() 
+    steps:
+      - name: Send Notification Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }} 
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "CI/CD Pipeline Status: ${{ github.repository }}"
+          to: elaa.brahmii@gmail.com
+          from: GitHub Actions Bot
+          body: |
+            The CI/CD pipeline for ${{ github.repository }} has finished.
+            
+            Status: ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Service(s) Updated: See GitOps Repo.
+            
+            View Job: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} 

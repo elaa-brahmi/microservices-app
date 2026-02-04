@@ -14,6 +14,7 @@ app.use('/auth', createProxyMiddleware({
         '^/gateway/auth': '/auth' // Strip gateway prefix if necessary
     }
 }));
+
 // Route to Tasks Service
 app.use('/tasks', createProxyMiddleware({ 
     target: process.env.TASKS_SERVICE_URL || 'http://localhost:3002', 
