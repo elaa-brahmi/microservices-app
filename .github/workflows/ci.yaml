@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0 # fetch full history so HEAD^ exists and diffs work reliably
 
       - name: Check for changes
         id: set-matrix
@@ -49,6 +49,11 @@ jobs:
             if git diff --name-only HEAD^ HEAD | grep -q "services/tasksService/"; then
               SERVICES=$(echo $SERVICES | jq -c '. + ["tasks-service"]')
             fi
+          fi
+
+          # If no services detected, set sentinel so the matrix is never empty
+          if [ "$(echo $SERVICES | jq length)" -eq 0 ]; then
+            SERVICES='["__no_changes"]'
           fi
 
           # 3. Format the final JSON as a single line (CRITICAL FIX)
@@ -81,8 +86,14 @@ jobs:
 
       # --- REMOVED: 'az acr login' (This was causing the AAD error) ---
 
+      - name: Skip when no changes
+        if: ${{ matrix.service == '__no_changes' }}
+        run: |
+          echo "No services changed. Skipping build, scan, and push."
+
       # --- STEP 2: BUILD ---
       - name: Build Docker Image
+        if: ${{ matrix.service != '__no_changes' }}
         run: |
           case "${{ matrix.service }}" in
             "tasks-service") CONTEXT="./services/tasksService" ;;
@@ -96,11 +107,12 @@ jobs:
 
       # --- STEP 3: SCAN ---
       - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
+        if: ${{ matrix.service != '__no_changes' }}
+        uses: aquasecurity/trivy-action@v1
         with:
           image-ref: '${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'       # Fail pipeline on critical vulns
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -108,7 +120,7 @@ jobs:
 
       # --- STEP 4: PUSH ---
       - name: Push Docker Image
-        if: success()
+        if: ${{ success() && matrix.service != '__no_changes' }}
         run: |
           docker push ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}
           docker push ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:latest
