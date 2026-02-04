@@ -28,6 +28,15 @@ app.get('/tasks', authenticateToken, (req, res) => {
     const userTasks = tasks.filter(task => task.username === req.user.username);
     res.json(userTasks);
 });
+app.delete('/tasks/:id', authenticateToken, (req, res) => {
+    const taskId = parseInt(req.params.id);
+    const taskIndex = tasks.findIndex(task => task.id === taskId && task.username === req.user.username);
+    if (taskIndex === -1) {
+        return res.status(404).send('Task not found');
+    }
+    tasks.splice(taskIndex, 1);
+    res.status(204).send();
+});
 app.listen(3002, () => {
     console.log('Tasks service running on port 4001');
 });
