@@ -37,6 +37,7 @@ app.delete('/tasks/:id', authenticateToken, (req, res) => {
     tasks.splice(taskIndex, 1);
     res.status(204).send();
 });
+
 app.listen(3002, () => {
     console.log('Tasks service running on port 4001');
 });

@@ -71,6 +71,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # --- STEP 1: LOGIN (This is the one that works for school accounts) ---
       - name: Login to ACR
         uses: docker/login-action@v3
         with:
@@ -78,27 +79,25 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Login to ACR
-        run: az acr login --name ${{ env.ACR_REGISTRY_NAME }}
+      # --- REMOVED: 'az acr login' (This was causing the AAD error) ---
 
+      # --- STEP 2: BUILD ---
       - name: Build Docker Image
         run: |
-          # Map service names to folder paths
           case "${{ matrix.service }}" in
             "tasks-service") CONTEXT="./services/tasksService" ;;
             *) CONTEXT="./services/${{ matrix.service }}" ;;
           esac
           
-          # Construct the full image name using the Login Server URL
           IMAGE_TAG="${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}"
           LATEST_TAG="${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:latest"
           
           docker build "$CONTEXT" -t "$IMAGE_TAG" -t "$LATEST_TAG"
 
+      # --- STEP 3: SCAN ---
       - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
         with:
-          # Match the exact tag built above
           image-ref: '${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}'
           format: 'table'
           exit-code: '1'
@@ -106,6 +105,7 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
+      # --- STEP 4: PUSH ---
       - name: Push Docker Image
         if: success()
         run: |
