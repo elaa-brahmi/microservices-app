@@ -32,17 +32,31 @@ jobs:
       - name: Check for changes
         id: set-matrix
         run: |
+          
           SERVICES="[]"
-          if git diff --name-only HEAD^ HEAD | grep -q "services/gateway/"; then
-            SERVICES=$(echo $SERVICES | jq '. + ["gateway"]')
+
+          
+          if [ "${{ github.run_number }}" -eq "1" ]; then
+            SERVICES='["gateway", "auth-service", "tasks-service"]'
+          else
+            
+            if git diff --name-only HEAD^ HEAD | grep -q "services/gateway/"; then
+              SERVICES=$(echo $SERVICES | jq -c '. + ["gateway"]')
+            fi
+            if git diff --name-only HEAD^ HEAD | grep -q "services/auth-service/"; then
+              SERVICES=$(echo $SERVICES | jq -c '. + ["auth-service"]')
+            fi
+            if git diff --name-only HEAD^ HEAD | grep -q "services/tasksService/"; then
+              SERVICES=$(echo $SERVICES | jq -c '. + ["tasks-service"]')
+            fi
           fi
-          if git diff --name-only HEAD^ HEAD | grep -q "services/auth-service/"; then
-            SERVICES=$(echo $SERVICES | jq '. + ["auth-service"]')
-          fi
-          if git diff --name-only HEAD^ HEAD | grep -q "services/tasksService/"; then
-            SERVICES=$(echo $SERVICES | jq '. + ["tasks-service"]')
-          fi
-          echo "matrix={\"service\": $SERVICES}" >> $GITHUB_OUTPUT
+
+          # 3. Format the final JSON as a single line (CRITICAL FIX)
+          # This creates: {"service":["gateway","auth-service"]}
+          JSON_OUTPUT=$(echo $SERVICES | jq -c '{service: .}')
+          
+          # 4. Save to GitHub Output
+          echo "matrix=$JSON_OUTPUT" >> $GITHUB_OUTPUT
 
   build-and-push:
     needs: detect-changes
