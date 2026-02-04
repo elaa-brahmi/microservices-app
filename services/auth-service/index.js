@@ -23,3 +23,6 @@ app.post('/login', async(req,res)=>{
         res.status(401).send('Invalid credentials');
     }
 });
+app.listen(3001, () => {
+    console.log('Auth service running on port 3001');
+});
