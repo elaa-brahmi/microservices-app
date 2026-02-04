@@ -5,7 +5,11 @@ const app = express();
 const PORT = process.env.PORT_GATEWAY || 3000;
 // Health endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'gateway', uptime: process.uptime() });
+  res.json({ 
+    status: 'ok', 
+    service: 'gateway', 
+    uptime: process.uptime() 
+  });
 });
 
 //For your Gateway to talk to the other services inside Kubernetes,
