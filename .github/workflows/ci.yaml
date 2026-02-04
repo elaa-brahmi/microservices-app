@@ -153,8 +153,50 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add .
+          # If there are no staged changes, exit successfully
+          if git diff --cached --quiet; then
+            echo "No changes to commit for ${{ matrix.service }}"
+            exit 0
+          fi
+
           git commit -m "chore: update ${{ matrix.service }} image to ${{ github.sha }}"
-          git push origin main 
+
+          # Fetch and rebase to avoid non-fast-forward errors, then push with retries
+          for i in 1 2 3; do
+            git fetch origin main
+            # Rebase local commits on top of remote main. Fail if rebase conflicts.
+            if ! git rebase origin/main; then
+              echo "Rebase failed due to conflicts. Aborting and exiting with error."
+              git rebase --abort || true
+              git status
+              git log --oneline -n 5
+              exit 1
+            fi
+
+            # Try normal push first
+            if git push origin main; then
+              echo "Pushed changes successfully"
+              break
+            fi
+
+            # If push failed (race), attempt force-with-lease to avoid overwriting unrelated changes
+            echo "Normal push failed, attempting force-with-lease"
+            if git push --force-with-lease origin main; then
+              echo "Pushed with force-with-lease"
+              break
+            fi
+
+            echo "Push attempt $i failed, retrying..."
+            sleep 2
+
+            if [ "$i" -eq 3 ]; then
+              echo "Failed to push after multiple attempts"
+              git status
+              git log --oneline -n 10
+              exit 1
+            fi
+          done
+
   notify-email:
     needs: update-gitops
     runs-on: ubuntu-latest
