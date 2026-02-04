@@ -8,7 +8,6 @@ RUN npm install --production
 
 COPY . .
 
-EXPOSE 3000 
-# (Change EXPOSE port per service: 3000, 3001, or 3002)
+EXPOSE 3002 
 
 CMD ["node", "index.js"]
