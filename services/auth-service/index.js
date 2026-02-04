@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT_AUTH_SERVICE || 3001;
 
 app.use(express.json());
 const users = [];

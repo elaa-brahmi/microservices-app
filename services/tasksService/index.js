@@ -43,7 +43,7 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'tasks-service', uptime: process.uptime() });
 });
 
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT_TASKS_SERVICE || 3002;
 app.listen(PORT, () => {
     console.log(`Tasks service running on port ${PORT}`);
 });
