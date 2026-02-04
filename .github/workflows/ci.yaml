@@ -131,7 +131,9 @@ jobs:
           
           # Replace the image tag in deployment.yaml
           # It looks for the pattern image: ACR_URL/service_name:ANYTHING and replaces it with the new SHA
-          sed -i "s|image: ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:.*|image: ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}|g" deployment.yaml
+          #sed -i "s|image: ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:.*|image: ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}|g" deployment.yaml
+          sed -i "s|image:.*|image: ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}|g" deployment.yaml
+          cat deployment.yaml
 
       - name: Commit and Push Changes
         run: |
