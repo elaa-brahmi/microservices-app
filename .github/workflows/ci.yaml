@@ -1,0 +1,99 @@
+name: CI - Build, Scan, & Push
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'services/**' # Simplifies watching all services
+      - '.github/workflows/ci.yaml' 
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write 
+
+env:
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+  ACR_REGISTRY_NAME: ${{ secrets.ACR_REGISTRY_NAME }} 
+
+jobs:
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for changes
+        id: set-matrix
+        run: |
+          SERVICES="[]"
+          if git diff --name-only HEAD^ HEAD | grep -q "services/gateway/"; then
+            SERVICES=$(echo $SERVICES | jq '. + ["gateway"]')
+          fi
+          if git diff --name-only HEAD^ HEAD | grep -q "services/auth-service/"; then
+            SERVICES=$(echo $SERVICES | jq '. + ["auth-service"]')
+          fi
+          if git diff --name-only HEAD^ HEAD | grep -q "services/tasksService/"; then
+            SERVICES=$(echo $SERVICES | jq '. + ["tasks-service"]')
+          fi
+          echo "matrix={\"service\": $SERVICES}" >> $GITHUB_OUTPUT
+
+  build-and-push:
+    needs: detect-changes
+    if: "${{ needs.detect-changes.outputs.matrix != '{\"service\": []}' }}"
+    name: "Build & Secure ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_REGISTRY_NAME }}
+
+      - name: Build Docker Image
+        run: |
+          # Map service names to folder paths
+          case "${{ matrix.service }}" in
+            "tasks-service") CONTEXT="./services/tasksService" ;;
+            *) CONTEXT="./services/${{ matrix.service }}" ;;
+          esac
+          
+          # Construct the full image name using the Login Server URL
+          IMAGE_TAG="${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}"
+          LATEST_TAG="${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:latest"
+          
+          docker build "$CONTEXT" -t "$IMAGE_TAG" -t "$LATEST_TAG"
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          # Match the exact tag built above
+          image-ref: '${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push Docker Image
+        if: success()
+        run: |
+          docker push ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}
+          docker push ${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:latest
