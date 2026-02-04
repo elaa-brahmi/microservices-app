@@ -13,7 +13,6 @@ app.post('/register', async(req,res)=>{
     users.push({username, password: hashedPassword});
     res.status(201).send('User registered');
 });
-
 app.post('/login', async(req,res)=>{
     const {username, password} = req.body;
     const user = users.find(u => u.username === username);
