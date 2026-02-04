@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const app = express();
+const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
 const users = [];
@@ -29,8 +30,6 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'auth-service', uptime: process.uptime() });
 });
 
-const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Auth service running on port ${PORT}`);
 });
-module.exports = app; 
