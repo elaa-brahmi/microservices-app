@@ -108,7 +108,7 @@ jobs:
       # --- STEP 3: SCAN ---
       - name: Run Trivy Vulnerability Scanner
         if: ${{ matrix.service != '__no_changes' }}
-        uses: aquasecurity/trivy-action@v1
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: '${{ env.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}'
           format: 'table'
