@@ -5,12 +5,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use('/auth', createProxyMiddleware({
-  target: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
+  target: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
   changeOrigin: true,
 }));
 
 app.use('/tasks', createProxyMiddleware({
-  target: process.env.TASKS_SERVICE_URL || 'http://tasks-service:3002',
+  target: process.env.TASKS_SERVICE_URL || 'http://localhost:3002',
   changeOrigin: true,
 }));
 
