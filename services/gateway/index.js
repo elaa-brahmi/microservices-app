@@ -3,15 +3,22 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
-
+//For your Gateway to talk to the other services inside Kubernetes,
+//  you must ensure the URLs point to the Kubernetes service names, not localhost.
 app.use('/auth', createProxyMiddleware({
-  target: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
+  target: process.env.AUTH_SERVICE_URL || 'http:///auth-service:3001',
   changeOrigin: true,
+  pathRewrite: {
+    '^/auth': '', // removes /auth from the start of the path
+  },
 }));
 
 app.use('/tasks', createProxyMiddleware({
-  target: process.env.TASKS_SERVICE_URL || 'http://localhost:3002',
+  target: process.env.TASKS_SERVICE_URL || 'http://tasks-service:3002',
   changeOrigin: true,
+    pathRewrite: {
+    '^/tasks': '', // removes /tasks from the start of the path
+  },
 }));
 
 // Health endpoint
