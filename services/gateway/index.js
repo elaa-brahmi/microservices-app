@@ -4,6 +4,9 @@ const app = express();
 
 const PORT = process.env.PORT_GATEWAY || 3000;
 // Health endpoint
+app.get('/healthz', (req, res) => {
+  res.status(200).send('OK'); //default health check endpoint for NGINX Ingress Controller
+});
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -11,6 +14,7 @@ app.get('/health', (req, res) => {
     uptime: process.uptime() 
   });
 });
+
 
 //For your Gateway to talk to the other services inside Kubernetes,
 //  you must ensure the URLs point to the Kubernetes service names, not localhost.
